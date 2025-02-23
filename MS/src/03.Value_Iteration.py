@@ -102,7 +102,7 @@ my_agent = agent()
 
 # state transition
 while (my_agent.state != 3):
-    res = my_agent.transfer()
+    res = my_agent.transition()
     print(f"s: {res[0]}, a: {res[1]}, r: {res[2]}, s': {res[3]}")
 
 # value iteration
