@@ -136,6 +136,14 @@ ENV/
 env.bak/
 venv.bak/
 
+# Machine Learning models
+*.mar
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.onnx
+
 # Spyder project settings
 .spyderproject
 .spyproject
