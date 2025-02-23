@@ -53,7 +53,7 @@ class Agent:
 
         elif action == 3:  # move up
             next_states = [max(0, row - 1) * 4 + col, max(0, row + 1) * 4 + col]  # up, down
-            weights = [0.8, 0.2]  # up 80%, down 80%
+            weights = [0.8, 0.2]  # up 80%, down 20%
 
         next_state = random.choices(next_states, weights=weights, k=1)[0]
         return next_state
