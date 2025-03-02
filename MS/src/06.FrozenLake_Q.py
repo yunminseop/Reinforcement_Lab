@@ -2,13 +2,20 @@
 import numpy as np
 import random
 import matplotlib.pyplot as plt
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
+from collections import deque
 
 
 S = list(range(0, 16))  # state 0~15
 A = [0, 1, 2, 3]  # actions
 
 class Agent:
-    def __init__(self):
+    def __init__(self, state_size, action_size):
+        self.state_size = state_size
+        self.action_size = action_size
         self.Q = {(s, a): 0 for s in S for a in A if s != 16}
         self.hole_state = [5, 7, 11, 12]
         self.n_episode = 1000000
@@ -16,9 +23,26 @@ class Agent:
         self.epsilon = 0.4 
         self.gamma = 0.99  # discount factor
         self.alpha = 0.0  # learning rate
+        self.batch_size = 64
+        self.D = deque(maxlen=2000)
+
+        self.mlp = self.deep_network()
 
         self.total_state = {each:[] for each in S}
         self.optimal_policy = {each: 0 for each in S}
+
+    def forward(self, x):
+        return self.mlp(x)
+    
+    def deep_network(self):
+        mlp = torch.nn.Sequential(
+            torch.nn.Linear(self.state_size, 2),
+            torch.nn.ReLU(),           
+            torch.nn.Linear(2, 4),           
+            torch.nn.ReLU(),                  
+            torch.nn.Linear(4, self.action_size)
+        )
+        return mlp
 
 
     def deterministic_transition(self, state, action):
@@ -83,6 +107,38 @@ class Agent:
     def is_done(self, state):
         return state == 15 or state in [5, 7, 11, 12]  # goal state or holes
 
+    def Model_learning(self):
+        mini_batch = np.asarray(random.sample(self.D, self.batch_size))
+        state_batch = np.asarray([mini_batch[i, 0] for i in range(self.batch_size)])
+        action_batch = mini_batch[:, 1]
+        reward_batch = mini_batch[:, 2]
+        next_state = np.asarray([mini_batch[i, 3] for i in range(self.batch_size)])
+        done = mini_batch[:, 4]
+
+        print(state_batch.shape)
+        print(action_batch.shape)
+        print(reward_batch.shape)
+        print(next_state.shape)
+
+        # state_batch = torch.unsqueeze(state_batch, 0)
+        state_batch = torch.tensor(state_batch, dtype=torch.float32).view(-1, self.state_size)
+        next_state = torch.tensor(next_state, dtype=torch.float32).view(-1, self.state_size)
+
+
+        target = self.mlp(state_batch)
+        next_target = self.mlp(next_state)
+
+        
+        for i in range(self.batch_size):
+            if done[i]:
+                target[i][action_batch[i]] = reward_batch[i]
+            else:
+                if action_batch[i] >= len(target[i]):
+                    raise ValueError(f"Invalid action index: {action_batch[i]} out of bounds for target size {len(target[i])}")
+                else:
+                    target[i][action_batch[i]] += self.alpha * ((reward_batch[i] + self.gamma * torch.max(next_target[i])) - target[i][action_batch[i]])
+        
+        self.mlp.fit(state_batch, target, batch_size=self.batch_size, epochs=1, verbose=0)
 
     def Q_learning(self):
         cnt = 0
@@ -91,7 +147,7 @@ class Agent:
             cnt += 1
             self.alpha = max(0.00015, 1 / (0.001 * cnt + 1))
             self.epsilon = max(0.1, 1 - (cnt / self.n_episode))
-            print(self.alpha, self.epsilon)
+            # print(self.alpha, self.epsilon)
 
             while curr_state != 15:
 
@@ -114,7 +170,14 @@ class Agent:
                 # update only state
                 curr_state = next_state
 
-                if self.is_done(curr_state): # if the next state is a goal or a hole, exit the while loop.
+                done =  self.is_done(curr_state) # if the next state is a goal or a hole, exit the while loop.
+
+                self.D.append((curr_state, action, reward, next_state, done))
+
+                if len(self.D) > self.batch_size * 3:
+                    self.Model_learning()
+
+                if done:    
                     break
         
         del self.Q[(15,0)]
@@ -180,6 +243,6 @@ class Agent:
 
 
 
-my_agent = Agent()
+my_agent = Agent(2, 4)
 my_agent.Q_learning()
 my_agent.show_optimal_policy()

@@ -18,10 +18,10 @@ n_episode = 100
 
 def deep_network():
     mlp=Sequential()
-    mlp.add(Dense(32, input_dim=env.observation_space.shape[0], activation="relu"))
-    mlp.add(Dense(32, activation="relu"))
-    mlp.add(Dense(env.action_space.n, activation="linear"))
-    mlp.compile(loss="mse", optimizer="Adam")
+    mlp.add(Dense(32, input_dim=env.observation_space.shape[0], activation="relu")) # input
+    mlp.add(Dense(32, activation="relu")) # Layer
+    mlp.add(Dense(env.action_space.n, activation="linear")) # output
+    mlp.compile(loss="mse", optimizer="adam")
     return mlp
 
 def model_learning():
@@ -38,7 +38,6 @@ def model_learning():
     for i in range(batch_size):
         if done[i]:
             target[i][action[i]] = reward[i]
-
         else:
             target[i][action[i]] += alpha*((reward[i] + gamma*np.amax(target1[i])) - target[i][action[i]])
 
@@ -65,9 +64,8 @@ for i in range(n_episode):
             a = np.argmax(q[0])
         
         s1, r, done, truncated, _ = env.step(a)
+        # env.render()
         done = done or truncated
-        # done = np.bool_(done) 
-
 
         if done and long_reward < max_steps - 1:
             r = -100
