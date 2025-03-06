@@ -1,7 +1,9 @@
 import gymnasium as gym
 from gymnasium.envs.registration import register
 import sys, tty, termios
-
+import numpy as np
+import matplotlib.pyplot as plt
+import random
 
 class _Getch:
     def __call__(Self):
