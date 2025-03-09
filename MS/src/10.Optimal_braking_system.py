@@ -64,7 +64,7 @@ class Controller:
             return Controller.A[q_values.index(max_q)]
 
 
-    def give_reward(self, state):
+    def get_reward(self, state):
         diff = abs(self.__optimal_temperature - state)
 
         # reward for last ten records of temp
@@ -194,7 +194,7 @@ class Controller:
 
                 next_state = self.curr_temperature
 
-                reward =  self.give_reward(next_state)
+                reward =  self.get_reward(next_state)
 
                 old_q = self.Q[(curr_state, action)]
 
