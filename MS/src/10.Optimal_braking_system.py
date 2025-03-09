@@ -11,7 +11,7 @@ class Controller:
 
 
     def __init__(self):
-        self.n_episode = 10
+        self.n_episode = 100
         self.epsilon = 0.3
         self.alpha = 0.7
         self.gamma = 0.9
@@ -31,7 +31,7 @@ class Controller:
         self.__optimal_temperature = 30
 
         self.max_speed = 70
-        self.min_speed = 5
+        self.min_speed = 30
 
         self.reward = 0
         self.avg_temp = 0
@@ -90,10 +90,10 @@ class Controller:
             reward_for_speed = -self.curr_speed
         
         else:
-            reward_for_speed = 0
+            reward_for_speed = 5
 
         
-        return reward_for_braking + reward_for_speed + accumulated_reward*0.2
+        return reward_for_braking*1.5 + reward_for_speed + accumulated_reward*0.7
         
         
 
@@ -107,18 +107,18 @@ class Controller:
                 self.braking()
 
         if self.accel:
-            self.curr_speed += 5 
+            self.curr_speed += 7 
             self.curr_temperature -= 2 
         else:
             if self.brake:
                 if self.curr_speed:
-                    self.curr_temperature += 4 
-                    self.curr_speed -= 7 
+                    self.curr_temperature += 3
+                    self.curr_speed -= 4 
                 else:
                     if self.curr_speed <= 0:
                         self.curr_speed = 0.0
             else:
-                self.curr_speed -= 2 
+                self.curr_speed -= 1
                 self.curr_temperature -= 1 
 
         self.curr_speed = min((max(0, self.curr_speed)), 100)
