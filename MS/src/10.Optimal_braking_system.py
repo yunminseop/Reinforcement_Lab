@@ -66,13 +66,14 @@ class Controller:
 
     def get_reward(self, state):
         diff = abs(self.__optimal_temperature - state)
+        avg_diff = abs(self.avg_temp - self.__optimal_temperature)
 
         # reward for last ten records of temp
-        if self.avg_temp > self.__optimal_temperature or self.avg_temp < self.__optimal_temperature:
+        if avg_diff > 5:
             accumulated_reward = -10
 
         else:
-            accumulated_reward = 0
+            accumulated_reward = 1
         
         # reward for diff
         if diff == 0:
