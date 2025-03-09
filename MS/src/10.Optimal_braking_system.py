@@ -68,10 +68,7 @@ class Controller:
         diff = abs(self.__optimal_temperature - state)
 
         # reward for last ten records of temp
-        if self.avg_temp > self.__optimal_temperature:
-            accumulated_reward = -10
-
-        elif self.avg_temp < self.__optimal_temperature:
+        if self.avg_temp > self.__optimal_temperature or self.avg_temp < self.__optimal_temperature:
             accumulated_reward = -10
 
         else:
@@ -80,6 +77,7 @@ class Controller:
         # reward for diff
         if diff == 0:
             reward_for_braking = 10
+
         else:
             reward_for_braking = 10 * 1/diff
 
@@ -151,16 +149,28 @@ class Controller:
             self.curr_speed = 0
             self.curr_temperature = 10
 
+            
 
             while self.remain_distance > 0:
-
+        
                 self.cnt += 1
                 curr_state = self.curr_temperature
                 avg_while_ten.put(curr_state)
+                total_temp = 0
+                avg_temp_list = []
 
-                if size_of_queue > 10:
-                    self.avg_temp = sum(avg_while_ten)/10
-                    avg_while_ten.get()
+                if avg_while_ten.qsize() > 10:
+                    while not avg_while_ten.empty():
+                        each = avg_while_ten.get()
+                        total_temp += each
+                        avg_temp_list.append(each)
+                    avg_temp_list.pop(0)
+
+                self.avg_temp = total_temp / 10
+                print(f"avg_temp: {self.avg_temp}")
+
+                for element in avg_temp_list:
+                    avg_while_ten.put(element)
 
                 x_data.append(self.cnt)
                 y_data.append(curr_state)
@@ -198,7 +208,7 @@ class Controller:
                 else:
                     self.remain_distance -= 0.3
                 speed_data.append(self.curr_speed)
-                print(f"curr_temp: {curr_state}, action: {action}, next_temp: {next_state}")
+                print(f"curr_temp: {curr_state}, action: {action}, next_temp: {next_state}, reward: {reward}")
                 print(f"curr_speed: {self.curr_speed}, remain_distance: {self.remain_distance}")
                 print("==================================")
             temp_avg = sum(y_data)/self.cnt

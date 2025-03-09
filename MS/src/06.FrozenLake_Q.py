@@ -2,47 +2,23 @@
 import numpy as np
 import random
 import matplotlib.pyplot as plt
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
-from collections import deque
 
 
 S = list(range(0, 16))  # state 0~15
 A = [0, 1, 2, 3]  # actions
 
 class Agent:
-    def __init__(self, state_size, action_size):
-        self.state_size = state_size
-        self.action_size = action_size
+    def __init__(self):
         self.Q = {(s, a): 0 for s in S for a in A if s != 16}
         self.hole_state = [5, 7, 11, 12]
-        self.n_episode = 1000000
+        self.n_episode = 100000
         self.Q[(15, -1)] = 1.0  # when state is 15, its action is -1(exception) and 1.0 Q
         self.epsilon = 0.4 
-        self.gamma = 0.99  # discount factor
+        self.gamma = 0.9  # discount factor
         self.alpha = 0.0  # learning rate
-        self.batch_size = 64
-        self.D = deque(maxlen=2000)
-
-        self.mlp = self.deep_network()
 
         self.total_state = {each:[] for each in S}
         self.optimal_policy = {each: 0 for each in S}
-
-    def forward(self, x):
-        return self.mlp(x)
-    
-    def deep_network(self):
-        mlp = torch.nn.Sequential(
-            torch.nn.Linear(self.state_size, 2),
-            torch.nn.ReLU(),           
-            torch.nn.Linear(2, 4),           
-            torch.nn.ReLU(),                  
-            torch.nn.Linear(4, self.action_size)
-        )
-        return mlp
 
 
     def deterministic_transition(self, state, action):
@@ -68,16 +44,16 @@ class Agent:
             weights = [0.8, 0.2]  # left 80%, right 20%
 
         elif action == 1:  # move down
-            next_states = [min(3, row + 1) * 4 + col, max(3, row - 1) * 4 + col]  # down, up
+            next_states = [min(3, row + 1) * 4 + col, max(0, row - 1) * 4 + col]  # down, up
             weights = [0.8, 0.2]  # down 80%, up 20%
 
         elif action == 2:  # move right
-            next_states = [row * 4 + min(3, col + 1), row * 4 + max(3, col + 1)]  # right, left
+            next_states = [row * 4 + min(3, col + 1), row * 4 + max(0, col - 1)]  # right, left
             weights = [0.8, 0.2]  # right 80%, left 20%
 
         elif action == 3:  # move up
             next_states = [max(0, row - 1) * 4 + col, max(0, row + 1) * 4 + col]  # up, down
-            weights = [0.8, 0.2]  # up 80%, down 20%
+            weights = [0.8, 0.2]  # up 80%, down 80%
 
         next_state = random.choices(next_states, weights=weights, k=1)[0]
         return next_state
@@ -107,38 +83,6 @@ class Agent:
     def is_done(self, state):
         return state == 15 or state in [5, 7, 11, 12]  # goal state or holes
 
-    def Model_learning(self):
-        mini_batch = np.asarray(random.sample(self.D, self.batch_size))
-        state_batch = np.asarray([mini_batch[i, 0] for i in range(self.batch_size)])
-        action_batch = mini_batch[:, 1]
-        reward_batch = mini_batch[:, 2]
-        next_state = np.asarray([mini_batch[i, 3] for i in range(self.batch_size)])
-        done = mini_batch[:, 4]
-
-        print(state_batch.shape)
-        print(action_batch.shape)
-        print(reward_batch.shape)
-        print(next_state.shape)
-
-        # state_batch = torch.unsqueeze(state_batch, 0)
-        state_batch = torch.tensor(state_batch, dtype=torch.float32).view(-1, self.state_size)
-        next_state = torch.tensor(next_state, dtype=torch.float32).view(-1, self.state_size)
-
-
-        target = self.mlp(state_batch)
-        next_target = self.mlp(next_state)
-
-        
-        for i in range(self.batch_size):
-            if done[i]:
-                target[i][action_batch[i]] = reward_batch[i]
-            else:
-                if action_batch[i] >= len(target[i]):
-                    raise ValueError(f"Invalid action index: {action_batch[i]} out of bounds for target size {len(target[i])}")
-                else:
-                    target[i][action_batch[i]] += self.alpha * ((reward_batch[i] + self.gamma * torch.max(next_target[i])) - target[i][action_batch[i]])
-        
-        self.mlp.fit(state_batch, target, batch_size=self.batch_size, epochs=1, verbose=0)
 
     def Q_learning(self):
         cnt = 0
@@ -147,7 +91,6 @@ class Agent:
             cnt += 1
             self.alpha = max(0.00015, 1 / (0.001 * cnt + 1))
             self.epsilon = max(0.1, 1 - (cnt / self.n_episode))
-            # print(self.alpha, self.epsilon)
 
             while curr_state != 15:
 
@@ -170,20 +113,15 @@ class Agent:
                 # update only state
                 curr_state = next_state
 
-                done =  self.is_done(curr_state) # if the next state is a goal or a hole, exit the while loop.
-
-                self.D.append((curr_state, action, reward, next_state, done))
-
-                if len(self.D) > self.batch_size * 3:
-                    self.Model_learning()
-
-                if done:    
+                if self.is_done(curr_state): # if the next state is a goal or a hole, exit the while loop.
                     break
         
         del self.Q[(15,0)]
         del self.Q[(15,1)]
         del self.Q[(15,2)]
         del self.Q[(15,3)]
+        for each in self.Q.items():
+            print(each)
 
 
     def show_optimal_policy(self):
@@ -195,10 +133,10 @@ class Agent:
 
         for item in self.total_state.items():
             match np.argmax(item[1]):
-                case 0: self.optimal_policy[item[0]] = "←"
-                case 1: self.optimal_policy[item[0]] = "↓"
-                case 2: self.optimal_policy[item[0]] = "→"
-                case 3: self.optimal_policy[item[0]] = "↑"
+                case 0: self.optimal_policy[item[0]] = "Left"
+                case 1: self.optimal_policy[item[0]] = "Down"
+                case 2: self.optimal_policy[item[0]] = "Right"
+                case 3: self.optimal_policy[item[0]] = "Up"
 
         print(self.optimal_policy)
 
@@ -243,6 +181,6 @@ class Agent:
 
 
 
-my_agent = Agent(2, 4)
+my_agent = Agent()
 my_agent.Q_learning()
 my_agent.show_optimal_policy()
