@@ -137,7 +137,6 @@ class Controller:
         brake_temp_avg = []
         
         avg_while_ten = Queue()
-        size_of_queue = avg_while_ten.qsize()
 
         for i in range(self.n_episode):
             print("**************")
